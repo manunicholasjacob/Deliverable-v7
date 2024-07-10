@@ -1,5 +1,3 @@
-# tui.py
-
 import curses
 import sbr
 import device_control
@@ -90,20 +88,15 @@ def main(stdscr):
     input_window.addstr(10-2, 0, "Choose operation (s: SBR, g: GPU Burn, b: Both): ")
     operation = input_window.getstr().decode().lower()
 
-    input_window.addstr(12-2, 0, "Do you want to SBR all GPU root ports? (y/n): ")
-    sbr_all_gpus = input_window.getstr().decode().lower()
-
     input_window.clear()
     input_window.addstr(2-2, 0, f"Password: {'*' * len(user_password)}")
     input_window.addstr(4-2, 0, f"Number of Loops: {inputnum_loops}")
     input_window.addstr(6-2, 0, f"Kill on error: {kill}")
     input_window.addstr(8-2, 0, f"Slot numbers to test: {slotlist}")
     input_window.addstr(10-2, 0, f"Operation: {operation}")
-    input_window.addstr(12-2, 0, f"SBR all GPU root ports: {sbr_all_gpus}")
-    input_window.addstr(14-2, 0, "Press any key to start the test...")
+    input_window.addstr(12-2, 0, "Press any key to start the test...")
     input_window.refresh()
     input_window.getch()
-
 
     # Set error reporting to 0
     device_window_height = 15
@@ -119,12 +112,12 @@ def main(stdscr):
     device_window.addstr(4, 2, "Error reporting set to 0.")
     device_window.refresh()
 
-    if operation in ['s', 'b'] or sbr_all_gpus == 'y':
+    if operation in ['s', 'b']:
         # Run the sbr functionality
         device_window.addstr(5, 2, "Running SBR tests...")
         device_window.refresh()
 
-        sbr.run_test(device_window, user_password, inputnum_loops, kill, slotlist, sbr_all_gpus == 'y')
+        sbr.run_test(device_window, user_password, inputnum_loops, kill, slotlist, pad=output_window, pad_pos=pad_pos)
 
         device_window.addstr(7, 2, "SBR tests completed.")
         device_window.refresh()
@@ -137,7 +130,7 @@ def main(stdscr):
 
         pad_pos = gpu_burn_script.check_replay(95, 10, 4, [], 10, output_window, height + 3, 55, output_window_height, output_window_width, pad_pos)
 
-        scroll_output(output_window, height + 3, 55, output_window_height, output_window_width, pad_pos)
+    scroll_output(output_window, height + 3, 55, output_window_height, output_window_width, pad_pos)
 
     # Reset device control registers to original values
     device_window.addstr(8, 2, "Resetting device control registers...")
