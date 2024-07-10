@@ -104,6 +104,7 @@ def main(stdscr):
     input_window.refresh()
     input_window.getch()
 
+
     # Set error reporting to 0
     device_window_height = 15
     device_window = curses.newwin(device_window_height, 60, height + 17, 1)
