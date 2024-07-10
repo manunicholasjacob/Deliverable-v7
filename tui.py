@@ -98,48 +98,35 @@ def main(stdscr):
     input_window.refresh()
     input_window.getch()
 
-    # Set error reporting to 0
-    device_window_height = 15
-    device_window = curses.newwin(device_window_height, 60, height + 17, 1)
-    display_box(device_window, height + 17, 1, device_window_height, 60, "Device Control Status")
-    device_window.addstr(2, 2, "Setting error reporting to 0...")
-    device_window.refresh()
+    pad_pos = gpu_burn_script.output_print(output_window, height + 3, 55, output_window_height, output_window_width, pad_pos, input="Setting error reporting to 0...\n")
 
     bdfs = device_control.get_all_bdfs()
-    device_control.store_original_values(bdfs)
-    device_control.process_bdfs(bdfs)
+    device_control.store_original_values(bdfs, output_window, height + 3, 55, output_window_height, output_window_width, pad_pos)
+    device_control.process_bdfs(bdfs, output_window, height + 3, 55, output_window_height, output_window_width, pad_pos)
 
-    device_window.addstr(4, 2, "Error reporting set to 0.")
-    device_window.refresh()
+    pad_pos = gpu_burn_script.output_print(output_window, height + 3, 55, output_window_height, output_window_width, pad_pos, input="Error reporting set to 0.\n")
 
     if operation in ['s', 'b']:
         # Run the sbr functionality
-        device_window.addstr(5, 2, "Running SBR tests...")
-        device_window.refresh()
-
-        sbr.run_test(device_window, user_password, inputnum_loops, kill, slotlist, pad=output_window, pad_pos=pad_pos)
-
-        device_window.addstr(7, 2, "SBR tests completed.")
-        device_window.refresh()
+        pad_pos = gpu_burn_script.output_print(output_window, height + 3, 55, output_window_height, output_window_width, pad_pos, input="Running SBR tests...\n")
+        sbr.run_test(output_window, user_password, inputnum_loops, kill, slotlist, height + 3, 55, output_window_height, output_window_width, pad_pos)
+        pad_pos = gpu_burn_script.output_print(output_window, height + 3, 55, output_window_height, output_window_width, pad_pos, input="SBR tests completed.\n")
 
     if operation in ['g', 'b']:
         # Run the GPU burn functionality
         for i in range(20):  # Example loop, replace with actual GPU burn logic
-            pad_pos = gpu_burn_script.output_print(output_window, height + 3, 55, output_window_height, output_window_width, pad_pos, f"Output line {i}")
+            pad_pos = gpu_burn_script.output_print(output_window, height + 3, 55, output_window_height, output_window_width, pad_pos, f"Output line {i}\n")
             time.sleep(0.2)
 
         pad_pos = gpu_burn_script.check_replay(95, 10, 4, [], 10, output_window, height + 3, 55, output_window_height, output_window_width, pad_pos)
 
     scroll_output(output_window, height + 3, 55, output_window_height, output_window_width, pad_pos)
 
-    # Reset device control registers to original values
-    device_window.addstr(8, 2, "Resetting device control registers...")
-    device_window.refresh()
+    pad_pos = gpu_burn_script.output_print(output_window, height + 3, 55, output_window_height, output_window_width, pad_pos, input="Resetting device control registers...\n")
 
-    device_control.reset_to_original_values()
+    device_control.reset_to_original_values(output_window, height + 3, 55, output_window_height, output_window_width, pad_pos)
 
-    device_window.addstr(10, 2, "Device control registers reset to original values.")
-    device_window.refresh()
+    pad_pos = gpu_burn_script.output_print(output_window, height + 3, 55, output_window_height, output_window_width, pad_pos, input="Device control registers reset to original values.\n")
 
     # Display summary screen
     stdscr.clear()
