@@ -1,5 +1,3 @@
-# sbr.py
-
 import subprocess
 import time
 from datetime import datetime
@@ -14,6 +12,7 @@ def read_header(bus):
 
 def read_slot_capabilities(bus):
     try:
+        #print(f"Reading slot capabilities for bus: {bus}")
         slot_capabilities_output = subprocess.check_output(["setpci", "-s", bus, "CAP_EXP+0X14.l"])
         return slot_capabilities_output.decode().strip()
     except subprocess.CalledProcessError:
@@ -176,7 +175,15 @@ def trace_to_root_port(bdf):
         current_bus = upstream_connection.split(":")[0]
         bdf = upstream_connection
 
-def run_test(stdscr, user_password, inputnum_loops, kill, slotlist, sbr_all_gpus=False):
+def output_print(window, window_offset_y, window_offset_x, window_height, window_width, pad_pos, input=""):
+    pady, padx = window.getyx()
+    window.addstr(pady + 1, 0, input)
+    if pady + 1 > window_height - 4:
+        pad_pos += int(len(input) / window_width) + 1
+    window.refresh(pad_pos, 0, window_offset_y, window_offset_x, min(curses.LINES - 1, window_offset_y + window_height - 3), min(curses.COLS - 1, window_offset_x + window_width - 5))
+    return pad_pos
+
+def run_test(stdscr, user_password, inputnum_loops, kill, slotlist, gpus_only=False, pad=None, pad_pos=0):
     stdscr.addstr(0, 0, "Running the test...\n")
     stdscr.refresh()
 
@@ -185,7 +192,8 @@ def run_test(stdscr, user_password, inputnum_loops, kill, slotlist, sbr_all_gpus
     start_time = datetime.now()
     output_lines.append(f"Start Time: {start_time}")
 
-    if sbr_all_gpus:
+    # Gather initial data
+    if gpus_only:
         gpus = identify_gpus()
         bdf_list = [trace_to_root_port(gpu) for gpu in gpus]
         bdf_list = list(set(bdf_list))  # Remove duplicates
@@ -225,6 +233,7 @@ def run_test(stdscr, user_password, inputnum_loops, kill, slotlist, sbr_all_gpus
     bridgecontrollist = []
     link_capabilities = {"upstream": [], "downstream": []}
 
+    # Get maximum train time for selected slots
     max_train_time = 0
     for slot in slotlist:
         idx = slotnumbers.index(slot)
@@ -263,6 +272,7 @@ def run_test(stdscr, user_password, inputnum_loops, kill, slotlist, sbr_all_gpus
                         output_lines.append(f"Link Status: {current_link_status}")
                         output_lines.append(f"Link Capabilities: {link_capabilities['downstream'][indexlist.index(j)]}")
                         output_lines.append(f"Error Time: {error_time}")
+                        pad_pos = output_print(pad, 10, 41, 15, 50, pad_pos, input=f"Link status does not match capabilities for bus {specific_bus_link}")
                 elif kill == "y":
                     if current_link_status != link_capabilities["downstream"][indexlist.index(j)]:
                         error_time = datetime.now()
