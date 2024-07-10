@@ -2,6 +2,7 @@ import subprocess
 import time
 from datetime import datetime
 from train_time import get_train_time  # Import the get_train_time function
+import gpu_burn_script
 
 def read_header(bus):
     try:
@@ -12,7 +13,6 @@ def read_header(bus):
 
 def read_slot_capabilities(bus):
     try:
-        #print(f"Reading slot capabilities for bus: {bus}")
         slot_capabilities_output = subprocess.check_output(["setpci", "-s", bus, "CAP_EXP+0X14.l"])
         return slot_capabilities_output.decode().strip()
     except subprocess.CalledProcessError:
@@ -140,13 +140,14 @@ def log_dmidecode_info(log_file):
         with open(log_file, 'a') as log:
             log.write(f"\nError running dmidecode: {str(e)}\n")
 
-def progress_bar(iteration, total, prefix='', suffix='', decimals=1, length=50, fill='█', print_end="\r"):
+def progress_bar(iteration, total, pad, pad_y, pad_x, pad_height, pad_width, pad_pos, prefix='', suffix='', decimals=1, length=50, fill='█', print_end="\r"):
     percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
     filled_length = int(length * iteration // total)
     bar = fill * filled_length + '-' * (length - filled_length)
-    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=print_end)
-    if iteration == total:
-        print()
+    pad.addstr(pad_pos, 0, f'\r{prefix} |{bar}| {percent}% {suffix}', print_end)
+    pad_pos += 1
+    pad.refresh(pad_pos, 0, pad_y, pad_x, min(curses.LINES - 1, pad_y + pad_height - 3), min(curses.COLS - 1, pad_x + pad_width - 5))
+    return pad_pos
 
 def identify_gpus():
     command_output = execute_shell_command("lspci | cut -d ' ' -f 1")
@@ -175,17 +176,8 @@ def trace_to_root_port(bdf):
         current_bus = upstream_connection.split(":")[0]
         bdf = upstream_connection
 
-def output_print(window, window_offset_y, window_offset_x, window_height, window_width, pad_pos, input=""):
-    pady, padx = window.getyx()
-    window.addstr(pady + 1, 0, input)
-    if pady + 1 > window_height - 4:
-        pad_pos += int(len(input) / window_width) + 1
-    window.refresh(pad_pos, 0, window_offset_y, window_offset_x, min(curses.LINES - 1, window_offset_y + window_height - 3), min(curses.COLS - 1, window_offset_x + window_width - 5))
-    return pad_pos
-
-def run_test(stdscr, user_password, inputnum_loops, kill, slotlist, gpus_only=False, pad=None, pad_pos=0):
-    stdscr.addstr(0, 0, "Running the test...\n")
-    stdscr.refresh()
+def run_test(pad, user_password, inputnum_loops, kill, slotlist, pad_y, pad_x, pad_height, pad_width, pad_pos, gpus_only=False):
+    pad_pos = gpu_burn_script.output_print(pad, pad_y, pad_x, pad_height, pad_width, pad_pos, input="Running the test...\n")
 
     # Initialize variables
     output_lines = []
@@ -254,7 +246,7 @@ def run_test(stdscr, user_password, inputnum_loops, kill, slotlist, gpus_only=Fa
         for j in indexlist:
             operation_count += 1
             slot_test_count[slotnumbers[j]] += 1
-            progress_bar(operation_count, total_operations, prefix='Progress', suffix='Complete', length=50)
+            pad_pos = progress_bar(operation_count, total_operations, pad, pad_y, pad_x, pad_height, pad_width, pad_pos, prefix='Progress', suffix='Complete', length=50)
             specific_bus_bridge = listbdf[j]
             specific_bus_link = listbdfdown[j]
             desired_values = [bridgecontrollist[indexlist.index(j)], "0043"]
@@ -272,7 +264,7 @@ def run_test(stdscr, user_password, inputnum_loops, kill, slotlist, gpus_only=Fa
                         output_lines.append(f"Link Status: {current_link_status}")
                         output_lines.append(f"Link Capabilities: {link_capabilities['downstream'][indexlist.index(j)]}")
                         output_lines.append(f"Error Time: {error_time}")
-                        pad_pos = output_print(pad, 10, 41, 15, 50, pad_pos, input=f"Link status does not match capabilities for bus {specific_bus_link}")
+                        pad_pos = gpu_burn_script.output_print(pad, pad_y, pad_x, pad_height, pad_width, pad_pos, input=f"Link status does not match capabilities for bus {specific_bus_link}\n")
                 elif kill == "y":
                     if current_link_status != link_capabilities["downstream"][indexlist.index(j)]:
                         error_time = datetime.now()
@@ -284,9 +276,7 @@ def run_test(stdscr, user_password, inputnum_loops, kill, slotlist, gpus_only=Fa
                         with open("output.txt", "w") as file:
                             for line in output_lines:
                                 file.write(line + "\n")
-                        stdscr.addstr(2, 0, "Link status does not match capabilities. Killing the program.")
-                        stdscr.refresh()
-                        stdscr.getch()
+                        pad_pos = gpu_burn_script.output_print(pad, pad_y, pad_x, pad_height, pad_width, pad_pos, input="Link status does not match capabilities. Killing the program.\n")
                         return
 
     end_time = datetime.now()
@@ -297,9 +287,7 @@ def run_test(stdscr, user_password, inputnum_loops, kill, slotlist, gpus_only=Fa
         for line in output_lines:
             file.write(line + "\n")
 
-    stdscr.addstr(2, 0, "Test completed. Check the output.txt file for results.")
-    stdscr.refresh()
-    stdscr.getch()  # Wait for a key press to keep the interface open
+    pad_pos = gpu_burn_script.output_print(pad, pad_y, pad_x, pad_height, pad_width, pad_pos, input="Test completed. Check the output.txt file for results.\n")
 
 # Example usage
 if __name__ == "__main__":
