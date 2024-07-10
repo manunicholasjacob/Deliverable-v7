@@ -14,7 +14,6 @@ def read_header(bus):
 
 def read_slot_capabilities(bus):
     try:
-        #print(f"Reading slot capabilities for bus: {bus}")
         slot_capabilities_output = subprocess.check_output(["setpci", "-s", bus, "CAP_EXP+0X14.l"])
         return slot_capabilities_output.decode().strip()
     except subprocess.CalledProcessError:
@@ -177,7 +176,7 @@ def trace_to_root_port(bdf):
         current_bus = upstream_connection.split(":")[0]
         bdf = upstream_connection
 
-def run_test(stdscr, user_password, inputnum_loops, kill, slotlist, gpus_only=False):
+def run_test(stdscr, user_password, inputnum_loops, kill, slotlist, sbr_all_gpus=False):
     stdscr.addstr(0, 0, "Running the test...\n")
     stdscr.refresh()
 
@@ -186,8 +185,7 @@ def run_test(stdscr, user_password, inputnum_loops, kill, slotlist, gpus_only=Fa
     start_time = datetime.now()
     output_lines.append(f"Start Time: {start_time}")
 
-    # Gather initial data
-    if gpus_only:
+    if sbr_all_gpus:
         gpus = identify_gpus()
         bdf_list = [trace_to_root_port(gpu) for gpu in gpus]
         bdf_list = list(set(bdf_list))  # Remove duplicates
@@ -227,7 +225,6 @@ def run_test(stdscr, user_password, inputnum_loops, kill, slotlist, gpus_only=Fa
     bridgecontrollist = []
     link_capabilities = {"upstream": [], "downstream": []}
 
-    # Get maximum train time for selected slots
     max_train_time = 0
     for slot in slotlist:
         idx = slotnumbers.index(slot)
